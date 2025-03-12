@@ -1,56 +1,98 @@
 import {
 	IAuthenticateGeneric,
+	ICredentialDataDecryptedObject,
 	ICredentialTestRequest,
 	ICredentialType,
+	IHttpRequestHelper,
 	INodeProperties,
 } from 'n8n-workflow';
 
 export class ExampleCredentialsApi implements ICredentialType {
 	name = 'exampleCredentialsApi';
-	displayName = 'Example Credentials API';
+	displayName = 'OpenGov PLC API';
+	icon = 'file:wand.svg';
+	documentationUrl = 'https://api.plce.opengov.com/docs';
+
 	properties: INodeProperties[] = [
-		// The credentials to get from user and save encrypted.
-		// Properties can be defined exactly in the same way
-		// as node properties.
 		{
-			displayName: 'User Name',
-			name: 'username',
-			type: 'string',
-			default: '',
-		},
-		{
-			displayName: 'Password',
-			name: 'password',
-			type: 'string',
+			displayName: 'Session Token',
+			name: 'sessionToken',
+			type: 'hidden',
 			typeOptions: {
+				expirable: true,
 				password: true,
 			},
 			default: '',
 		},
+		{
+			displayName: 'Client ID',
+			name: 'clientId',
+			type: 'string',
+			default: '',
+			required: true,
+		},
+		{
+			displayName: 'Client Secret',
+			name: 'clientSecret',
+			type: 'string',
+			typeOptions: { password: true },
+			default: '',
+			required: true,
+		},
+		{
+			displayName: 'Auth0 Domain',
+			name: 'domain',
+			type: 'hidden', // ✅ Hidden from the user
+			default: 'accounts.viewpointcloud.com',
+		},
+		{
+			displayName: 'Audience',
+			name: 'audience',
+			type: 'hidden', // ✅ Hidden from the user
+			default: 'viewpointcloud.com/api/production',
+		},
 	];
 
-	// This credential is currently not used by any node directly
-	// but the HTTP Request node can use it to make requests.
-	// The credential is also testable due to the `test` property below
+	/**
+	 * Fetches the OAuth2 token before authentication
+	 */
+	async preAuthentication(this: IHttpRequestHelper, credentials: ICredentialDataDecryptedObject) {
+		const { access_token } = (await this.helpers.httpRequest({
+			method: 'POST',
+			url: `https://${credentials.domain}/oauth/token`,
+			body: {
+				client_id: credentials.clientId,
+				client_secret: credentials.clientSecret,
+				audience: credentials.audience, // ✅ Sends audience automatically
+				grant_type: 'client_credentials',
+			},
+			headers: {
+				'Content-Type': 'application/json',
+			},
+		})) as { access_token: string };
+
+		return { sessionToken: access_token };
+	}
+
+	/**
+	 * Uses the token retrieved from `preAuthentication()` to authenticate requests
+	 */
 	authenticate: IAuthenticateGeneric = {
 		type: 'generic',
 		properties: {
-			auth: {
-				username: '={{ $credentials.username }}',
-				password: '={{ $credentials.password }}',
-			},
-			qs: {
-				// Send this as part of the query string
-				n8n: 'rocks',
+			headers: {
+				Authorization: '=Bearer {{$credentials.sessionToken}}',
 			},
 		},
 	};
 
-	// The block below tells how this credential can be tested
+	/**
+	 * Test function to verify that authentication works
+	 */
 	test: ICredentialTestRequest = {
 		request: {
-			baseURL: 'https://example.com/',
-			url: '',
+			method: 'GET',
+			url: 'https://api.plce.opengov.com/plce/v1/presentation-alex/records/31783',
 		},
 	};
 }

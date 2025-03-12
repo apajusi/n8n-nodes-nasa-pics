@@ -1,5 +1,5 @@
 {
-  "name": "n8n-nodes-<...>",
+  "name": "n8n-nodes-opengovplc",
   "version": "0.1.0",
   "description": "",
   "keywords": [
@@ -12,8 +12,6 @@
     "email": ""
   },
   "repository": {
-    "type": "git",
-    "url": "https://github.com/<...>/n8n-nodes-<...>.git"
   },
   "main": "index.js",
   "scripts": {
@@ -35,6 +33,7 @@
     ],
     "nodes": [
       "dist/nodes/ExampleNode/ExampleNode.node.js",
+      "dist/nodes/ExampleNode/ExampleNodeTrigger.node.js",
       "dist/nodes/HttpBin/HttpBin.node.js"
     ]
   },
